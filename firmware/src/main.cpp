@@ -1,20 +1,27 @@
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
 
+#define DCF_IN D7
+#define MINUTE_HOME D5
+#define HOUR_HOME D6
+
 int next_second = -1;
-int display_seconds = -1;
 int clock_seconds = -1;
+//
+int clock_minutes = -1;
+int display_minutes = -1;
 
 uint32_t up_millis;
 boolean up_millis_pending = false;
 uint32_t down_millis;
 boolean down_millis_pending = false;
 
+uint8_t unsynced_counter = 255;
 uint32_t timer1_at_flank_up = 0;
 
 volatile uint32_t timer_read = 0;
 void IRAM_ATTR inputLevelChangedISR() {
-    int v = digitalRead(D7);
+    int v = digitalRead(DCF_IN);
     if (v) {
         up_millis = millis();
         up_millis_pending = true;
@@ -27,19 +34,33 @@ void IRAM_ATTR inputLevelChangedISR() {
     }
 }
 
+#define TIM1_SECOND     5000000
+#define TIM1_HALFSECOND 2500000
+uint32_t last_timer_max = TIM1_SECOND;
+
 volatile bool sec_fired = false;
 void IRAM_ATTR timerFiredISR() {
-    if (timer1_at_flank_up > 100 && timer1_at_flank_up < 5000000 - 100) {
-        if (timer1_at_flank_up < 2500000) {
+    int8_t sign = timer1_at_flank_up < TIM1_HALFSECOND ? -1 : 1;
+    uint32_t diff = sign == -1 ? 
+        timer1_at_flank_up : last_timer_max - timer1_at_flank_up;
+
+    if (diff > 100000 && unsynced_counter < 255) {
+        unsynced_counter++;
+    }
+
+    if (diff > 100 && (diff <= 100000 || unsynced_counter >= 15)) {
+        if (sign == -1) {
             // timer fired too late -> make next timer period shorter
-            timer1_write(5000000 - timer1_at_flank_up);
+            last_timer_max = TIM1_SECOND - diff;
         } else {
             // timer fired too early -> make next timer period longer
-            timer1_write(5000000 + (5000000 - timer1_at_flank_up));
+            last_timer_max = TIM1_SECOND + diff;
         }
+        unsynced_counter = 0;
     } else {
-        timer1_write(5000000);
+        last_timer_max = TIM1_SECOND;
     }
+    timer1_write(last_timer_max);
     
     if (next_second != -1) {
         clock_seconds = next_second;
@@ -49,6 +70,11 @@ void IRAM_ATTR timerFiredISR() {
     }
     
     sec_fired = true;
+    // Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
+    //     timer1_at_flank_up,
+    //     sign, diff,
+    //     unsynced_counter
+    // );
 }
 
 void setup() {
@@ -60,9 +86,11 @@ void setup() {
     timer1_attachInterrupt(timerFiredISR);
 
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(D7, INPUT);
+    pinMode(DCF_IN, INPUT);
+    pinMode(MINUTE_HOME, INPUT);
+    pinMode(HOUR_HOME, INPUT);
 
-    attachInterrupt(digitalPinToInterrupt(D7), inputLevelChangedISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(DCF_IN), inputLevelChangedISR, CHANGE);
 
     interrupts();
     Serial.begin(9600);
@@ -187,6 +215,8 @@ void loop() {
     }
 
     if (sec_fired) {
+        Serial.printf("M[%d] H[%d]\n", digitalRead(MINUTE_HOME), digitalRead(HOUR_HOME));
+
         sec_fired = false;
         if (clock_seconds != -1) {
             Serial.printf("%02d:%02d:%02d\n", 
@@ -194,6 +224,21 @@ void loop() {
                 (clock_seconds / 60) % 60,
                 clock_seconds % 60
             );
+
+            {
+                clock_minutes = clock_seconds / 60;
+                if (display_minutes == -1) {
+                    display_minutes = clock_minutes;
+                }
+            }
+
+            if (clock_seconds % 60 == 0) {
+                clock_minutes = clock_seconds / 60;
+                if (display_minutes != -1 && ((display_minutes + 1) % 1440) == clock_minutes) {
+                    Serial.println("Advance Minute");
+                    display_minutes = clock_minutes;
+                }
+            }
         } else {
             Serial.println("??:??:??");
         }
