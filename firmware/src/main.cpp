@@ -1,9 +1,22 @@
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
 
+#define DEBUG
+
 #define DCF_IN D7
 #define MINUTE_HOME D5
 #define HOUR_HOME D6
+#define COIL_POSITIVE D2
+#define COIL_NEGATIVE D3
+
+#define TIM1_SECOND     5000000
+#define TIM1_HALFSECOND 2500000
+#define TIM1_DIVIDER TIM_DIV16
+
+#define COIL_ACTIVATION_MS 50
+#define MIN_COIL_INTERVAL_MS 250
+
+#define HOME_MINUTES 75
 
 int next_second = -1;
 int clock_seconds = -1;
@@ -24,6 +37,7 @@ void IRAM_ATTR inputLevelChangedISR() {
     int v = digitalRead(DCF_IN);
     if (v) {
         up_millis = millis();
+        down_millis_pending = false;
         up_millis_pending = true;
         if (timer1_enabled()) {
             timer1_at_flank_up = timer1_read();
@@ -34,9 +48,9 @@ void IRAM_ATTR inputLevelChangedISR() {
     }
 }
 
-#define TIM1_SECOND     5000000
-#define TIM1_HALFSECOND 2500000
 uint32_t last_timer_max = TIM1_SECOND;
+
+void fix_polarity();
 
 volatile bool sec_fired = false;
 void IRAM_ATTR timerFiredISR() {
@@ -70,30 +84,47 @@ void IRAM_ATTR timerFiredISR() {
     }
     
     sec_fired = true;
-    // Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
-    //     timer1_at_flank_up,
-    //     sign, diff,
-    //     unsynced_counter
-    // );
+//     Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
+//         timer1_at_flank_up,
+//         sign, diff,
+//         unsynced_counter
+//     );
 }
 
 void setup() {
     WiFi.mode(WIFI_OFF);
 
     noInterrupts();
-    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
+    timer1_enable(TIM1_DIVIDER, TIM_EDGE, TIM_SINGLE);
     timer1_write(5000000);
     timer1_attachInterrupt(timerFiredISR);
 
     pinMode(LED_BUILTIN, OUTPUT);
+
+    {
+        digitalWrite(COIL_POSITIVE, LOW);
+        pinMode(COIL_POSITIVE, OUTPUT);
+        digitalWrite(COIL_POSITIVE, LOW);
+    }
+    {
+        digitalWrite(COIL_NEGATIVE, LOW);
+        pinMode(COIL_NEGATIVE, OUTPUT);
+        digitalWrite(COIL_NEGATIVE, LOW);
+    }
+
     pinMode(DCF_IN, INPUT);
     pinMode(MINUTE_HOME, INPUT);
     pinMode(HOUR_HOME, INPUT);
 
     attachInterrupt(digitalPinToInterrupt(DCF_IN), inputLevelChangedISR, CHANGE);
 
-    interrupts();
+    
     Serial.begin(9600);
+
+    delay(100);
+    fix_polarity();
+
+    interrupts();
 }
 
 int cursor = 0;
@@ -119,8 +150,8 @@ void interprete() {
     int min_ten = buffer[25] |
                   (buffer[26]<<1) |
                   (buffer[27]<<2);
-    boolean checks = true;
-    checks = checks && parity_check(21, 28);
+    boolean checks_ok = true;
+    checks_ok = checks_ok && parity_check(21, 28);
 
     int hour_one = buffer[29] | 
               (buffer[30]<<1) |
@@ -128,7 +159,7 @@ void interprete() {
               (buffer[32]<<3);
     int hour_ten = buffer[33] |
                   (buffer[34]<<1);
-    checks = checks && parity_check(29, 35);
+    checks_ok = checks_ok && parity_check(29, 35);
 
     int day_one = buffer[36] | 
               (buffer[37]<<1) |
@@ -153,18 +184,19 @@ void interprete() {
                   (buffer[57]<<3);
 
     int dow = buffer[42] | (buffer[43]<<1) | (buffer[44]<<2);
-    checks = checks && parity_check(36, 58);
+    checks_ok = checks_ok && parity_check(36, 58);
 
     
-    Serial.printf("%d-%d-%d %d:%d:XX, dow = %d\n", 
+    Serial.printf("%d-%d-%d %d:%d:XX, dow = %d, checks_ok=%d\n", 
         year_one + year_ten*10,
         month_one + month_ten*10,
         day_one + day_ten*10,
         hour_one + hour_ten*10,
         min_one + min_ten*10,
-        dow
+        dow,
+        checks_ok
     );
-    if (checks) {
+    if (checks_ok) {
         next_second = hour_one * 3600 + hour_ten * 36000 + 
                       min_one * 60 + min_ten * 600
                       - 1;
@@ -172,6 +204,8 @@ void interprete() {
 }
 
 void next(uint32_t rx_time, uint32_t signal_duration) {
+    //Serial.printf("next: sig_dur = %d\n", signal_duration);
+
     int bit = -1;
     if (signal_duration > 55 && signal_duration < 145) {
         bit = 0;
@@ -188,9 +222,10 @@ void next(uint32_t rx_time, uint32_t signal_duration) {
         }
 
         buffer[cursor++] = bit;
-        if (clock_seconds == -1) {
+        if (clock_minutes == -1) {
             Serial.printf("buf[%d] = %d\n", cursor - 1, bit);
         }
+        
         // Serial.println("-----------------");
         // Serial.printf("delta_t = %d; sig_duration = %d; buffer[%d] = %d\n", rx_time_diff, signal_duration, cursor - 1, bit);
         // Serial.printf("clock_seconds=%d\n", clock_seconds);
@@ -202,10 +237,76 @@ void next(uint32_t rx_time, uint32_t signal_duration) {
     }
 }
 
-int level = 0;
-unsigned long up_time = 0;
+unsigned long last_advance = 0;
+int polarity = 0;
+
+void positive_pulse();
+void negative_pulse();
+
+void fix_polarity() {
+    positive_pulse();
+    delay(MIN_COIL_INTERVAL_MS);
+    negative_pulse();
+    delay(MIN_COIL_INTERVAL_MS);
+    positive_pulse();
+    delay(MIN_COIL_INTERVAL_MS);
+    negative_pulse();
+    last_advance = millis();
+    polarity = 1;
+}
+
+void positive_pulse() {
+    digitalWrite(COIL_POSITIVE, HIGH);
+    delay(COIL_ACTIVATION_MS);
+    digitalWrite(COIL_POSITIVE, LOW);
+}
+
+void negative_pulse() {
+    digitalWrite(COIL_NEGATIVE, HIGH);
+    delay(COIL_ACTIVATION_MS);
+    digitalWrite(COIL_NEGATIVE, LOW);
+}
+
+void advance() {
+    if (polarity > 0) {
+        positive_pulse();
+    } else if (polarity < 0) {
+        negative_pulse();
+    }
+    polarity = polarity * (-1);
+}
+
+bool is_home_position() {
+    return digitalRead(MINUTE_HOME) == LOW && digitalRead(HOUR_HOME) == LOW;
+}
+
+// 0 = homing
+// 1 = homed
+int state = 0;
 
 void loop() {
+
+    if (state == 0) {
+        unsigned long now = millis();
+        if (now - last_advance > MIN_COIL_INTERVAL_MS) {
+            advance();
+            last_advance = now;
+        }
+        if (is_home_position()) {
+            state = 1;
+            display_minutes = HOME_MINUTES;
+        }
+    } else if (state == 1) {
+        if (clock_minutes != -1 && display_minutes != clock_minutes) {
+            unsigned long now = millis();
+            if (now - last_advance > MIN_COIL_INTERVAL_MS) {
+                advance();
+                last_advance = now;
+                display_minutes = (display_minutes + 1) % 720;
+                Serial.printf("dm = %d\n", display_minutes);
+            }
+        }
+    }
 
     if (up_millis_pending && down_millis_pending) {
         uint32_t up_time = down_millis - up_millis;
@@ -215,32 +316,33 @@ void loop() {
     }
 
     if (sec_fired) {
-        Serial.printf("M[%d] H[%d]\n", digitalRead(MINUTE_HOME), digitalRead(HOUR_HOME));
-
         sec_fired = false;
+        
         if (clock_seconds != -1) {
-            Serial.printf("%02d:%02d:%02d\n", 
-                clock_seconds / 3600,
-                (clock_seconds / 60) % 60,
-                clock_seconds % 60
-            );
+            clock_minutes = (clock_seconds / 60) % 720;
 
-            {
-                clock_minutes = clock_seconds / 60;
-                if (display_minutes == -1) {
-                    display_minutes = clock_minutes;
-                }
-            }
+            #ifdef DEBUG
+                Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
+                    clock_seconds / 3600,
+                    (clock_seconds / 60) % 60,
+                    clock_seconds % 60,
+                    clock_minutes, display_minutes, state
+                );
+            #endif
 
             if (clock_seconds % 60 == 0) {
-                clock_minutes = clock_seconds / 60;
-                if (display_minutes != -1 && ((display_minutes + 1) % 1440) == clock_minutes) {
-                    Serial.println("Advance Minute");
-                    display_minutes = clock_minutes;
+                if (display_minutes != -1 && ((display_minutes + 1) % 720) == clock_minutes) {
+                    if (state == 1) {
+                        Serial.println("Advance Minute");
+                        advance();
+                        display_minutes = (display_minutes + 1) % 720;
+                    }
                 }
             }
         } else {
-            Serial.println("??:??:??");
+            Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
+                clock_minutes, display_minutes, state
+            );
         }
     }
 
