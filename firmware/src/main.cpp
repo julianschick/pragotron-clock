@@ -1,7 +1,10 @@
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
+#include "decode.h"
 
 #define DEBUG
+//#define DEBUG_FINE
+//#define DEBUG_FINEST
 
 #define DCF_IN D7
 #define MINUTE_HOME D5
@@ -18,6 +21,11 @@
 
 #define HOME_MINUTES 75
 
+#define ACCEPTED_SIGNAL_DURATION_DEVIATION_MS 45
+#define ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS 200
+
+#define UNACCEPTED_TELEGRAMS 15
+
 int next_second = -1;
 int clock_seconds = -1;
 //
@@ -31,6 +39,9 @@ boolean down_millis_pending = false;
 
 uint8_t unsynced_counter = 255;
 uint32_t timer1_at_flank_up = 0;
+
+bool is_home_position();
+void fix_polarity();
 
 volatile uint32_t timer_read = 0;
 void IRAM_ATTR inputLevelChangedISR() {
@@ -49,8 +60,6 @@ void IRAM_ATTR inputLevelChangedISR() {
 }
 
 uint32_t last_timer_max = TIM1_SECOND;
-
-void fix_polarity();
 
 volatile bool sec_fired = false;
 void IRAM_ATTR timerFiredISR() {
@@ -84,11 +93,14 @@ void IRAM_ATTR timerFiredISR() {
     }
     
     sec_fired = true;
-//     Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
-//         timer1_at_flank_up,
-//         sign, diff,
-//         unsynced_counter
-//     );
+
+    #ifdef DEBUG_FINEST
+    Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
+        timer1_at_flank_up,
+        sign, diff,
+        unsynced_counter
+    );
+    #endif
 }
 
 void setup() {
@@ -100,6 +112,7 @@ void setup() {
     timer1_attachInterrupt(timerFiredISR);
 
     pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
 
     {
         digitalWrite(COIL_POSITIVE, LOW);
@@ -128,117 +141,103 @@ void setup() {
 }
 
 int cursor = 0;
-int buffer[59];
+boolean invalid_bit = false;
+uint8_t buffer[8];
 unsigned long last_bit_rx_time;
-
-bool parity_check(int begin, int end) {
-    int sum = 0;
-    for (int i = begin; i <= end; i++) {
-        sum += buffer[i];
-    }
-    if ((sum % 2) != 0) {
-        Serial.println("Parity check failed.");
-    }
-    return (sum % 2) == 0;
-}
-
-void interprete() {
-    int min_one = buffer[21] | 
-              (buffer[22]<<1) |
-              (buffer[23]<<2) |
-              (buffer[24]<<3);
-    int min_ten = buffer[25] |
-                  (buffer[26]<<1) |
-                  (buffer[27]<<2);
-    boolean checks_ok = true;
-    checks_ok = checks_ok && parity_check(21, 28);
-
-    int hour_one = buffer[29] | 
-              (buffer[30]<<1) |
-              (buffer[31]<<2) |
-              (buffer[32]<<3);
-    int hour_ten = buffer[33] |
-                  (buffer[34]<<1);
-    checks_ok = checks_ok && parity_check(29, 35);
-
-    int day_one = buffer[36] | 
-              (buffer[37]<<1) |
-              (buffer[38]<<2) |
-              (buffer[39]<<3);
-    int day_ten = buffer[40] |
-                  (buffer[41]<<1);
-
-    int month_one = buffer[45] | 
-              (buffer[46]<<1) |
-              (buffer[47]<<2) |
-              (buffer[48]<<3);
-    int month_ten = buffer[49];
-
-    int year_one = buffer[50] | 
-              (buffer[51]<<1) |
-              (buffer[52]<<2) |
-              (buffer[53]<<3);
-    int year_ten = buffer[54] |
-                  (buffer[55]<<1) |
-                  (buffer[56]<<2) |
-                  (buffer[57]<<3);
-
-    int dow = buffer[42] | (buffer[43]<<1) | (buffer[44]<<2);
-    checks_ok = checks_ok && parity_check(36, 58);
-
-    
-    Serial.printf("%d-%d-%d %d:%d:XX, dow = %d, checks_ok=%d\n", 
-        year_one + year_ten*10,
-        month_one + month_ten*10,
-        day_one + day_ten*10,
-        hour_one + hour_ten*10,
-        min_one + min_ten*10,
-        dow,
-        checks_ok
-    );
-    if (checks_ok) {
-        next_second = hour_one * 3600 + hour_ten * 36000 + 
-                      min_one * 60 + min_ten * 600
-                      - 1;
-    }
-}
+//
+Time* last_accepted_time = NULL;
+int minute_diff_to_last_accepted = 1;
 
 void next(uint32_t rx_time, uint32_t signal_duration) {
     //Serial.printf("next: sig_dur = %d\n", signal_duration);
 
     int bit = -1;
-    if (signal_duration > 55 && signal_duration < 145) {
+    if (signal_duration > 100 - ACCEPTED_SIGNAL_DURATION_DEVIATION_MS && 
+        signal_duration < 100 + ACCEPTED_SIGNAL_DURATION_DEVIATION_MS) {
         bit = 0;
     }
-    if (signal_duration > 155 && signal_duration < 245) {
+    if (signal_duration > 200 - ACCEPTED_SIGNAL_DURATION_DEVIATION_MS && 
+        signal_duration < 200 + ACCEPTED_SIGNAL_DURATION_DEVIATION_MS) {
         bit = 1;
     }
-    if (bit != -1) {
+
+    if (bit == -1) {
+        invalid_bit = true;
+    } else {
         unsigned long rx_time_diff = rx_time - last_bit_rx_time;
         last_bit_rx_time = rx_time;
 
-        if (((rx_time_diff > 1800) && (rx_time_diff < 2200)) || cursor > 58) {
+        if (cursor >= 59 || 
+            ((rx_time_diff > 2000 - ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS) && 
+             (rx_time_diff < 2000 + ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS))) {
             cursor = 0;
         }
 
-        buffer[cursor++] = bit;
+        buffer[cursor / 8] = (bit == 1)
+            ? buffer[cursor / 8] | (0x01 << (cursor % 8))
+            : buffer[cursor / 8] & (~(0x01 << (cursor % 8)));
+        cursor++;
+
+        #ifdef DEBUG_FINE
         if (clock_minutes == -1) {
             Serial.printf("buf[%d] = %d\n", cursor - 1, bit);
         }
-        
-        // Serial.println("-----------------");
-        // Serial.printf("delta_t = %d; sig_duration = %d; buffer[%d] = %d\n", rx_time_diff, signal_duration, cursor - 1, bit);
-        // Serial.printf("clock_seconds=%d\n", clock_seconds);
-        // Serial.printf("timer1_at_flank_up=%d\n", timer1_at_flank_up);
+        #endif
+
+        #ifdef DEBUG_FINEST
+        Serial.println("-----------------");
+        Serial.printf("delta_t = %d; sig_duration = %d; buffer[%d] = %d\n", rx_time_diff, signal_duration, cursor - 1, bit);
+        Serial.printf("clock_seconds=%d\n", clock_seconds);
+        Serial.printf("timer1_at_flank_up=%d\n", timer1_at_flank_up);
+        #endif
 
         if (cursor == 59) {
-            interprete();
+            Time* t = Time::decode_telegram(buffer);
+
+            boolean accept = t->parity_error_count == 0 && !invalid_bit &&
+                (last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff_to_last_accepted));
+
+            invalid_bit = false;
+
+            if (!accept && minute_diff_to_last_accepted > UNACCEPTED_TELEGRAMS) {
+                accept = true;
+            } else if (!accept) {
+                minute_diff_to_last_accepted++;
+            }
+
+            if (accept) {
+                if (last_accepted_time != NULL) {
+                    delete last_accepted_time;
+                }
+                last_accepted_time = t;
+                next_second = 3600*t->hour + 60*t->minute - 1;
+                minute_diff_to_last_accepted = 1;
+            }
+
+            #ifdef DEBUG
+            if (!accept) {
+                Serial.printf("[NOT ACCEPTED] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff_to_last_accepted=%d\n", 
+                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, minute_diff_to_last_accepted
+                );
+            } else {
+                Serial.printf("%02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff_to_last_accepted=%d\n", 
+                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, minute_diff_to_last_accepted
+                );
+            }
+            Serial.flush();
+            #endif
+
+            if (!accept) {
+                delete t;
+            }
         }
     }
 }
 
 unsigned long last_advance = 0;
-int polarity = 0;
+
+// 1 if next pulse is to be positive, -1 if next pulse is to be negative
+int8_t polarity = 0;
 
 void positive_pulse();
 void negative_pulse();
@@ -251,8 +250,9 @@ void fix_polarity() {
     positive_pulse();
     delay(MIN_COIL_INTERVAL_MS);
     negative_pulse();
-    last_advance = millis();
     polarity = 1;
+
+    last_advance = millis();
 }
 
 void positive_pulse() {
@@ -303,7 +303,10 @@ void loop() {
                 advance();
                 last_advance = now;
                 display_minutes = (display_minutes + 1) % 720;
+
+                #ifdef DEBUG_FINE
                 Serial.printf("dm = %d\n", display_minutes);
+                #endif
             }
         }
     }
@@ -321,28 +324,33 @@ void loop() {
         if (clock_seconds != -1) {
             clock_minutes = (clock_seconds / 60) % 720;
 
-            #ifdef DEBUG
-                Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
-                    clock_seconds / 3600,
-                    (clock_seconds / 60) % 60,
-                    clock_seconds % 60,
-                    clock_minutes, display_minutes, state
-                );
+            #ifdef DEBUG_FINE
+            Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
+                clock_seconds / 3600,
+                (clock_seconds / 60) % 60,
+                clock_seconds % 60,
+                clock_minutes, display_minutes, state
+            );
             #endif
 
             if (clock_seconds % 60 == 0) {
                 if (display_minutes != -1 && ((display_minutes + 1) % 720) == clock_minutes) {
                     if (state == 1) {
-                        Serial.println("Advance Minute");
+                        #ifdef DEBUG_FINE
+                        Serial.println(">> advance one minute");
+                        #endif
+
                         advance();
                         display_minutes = (display_minutes + 1) % 720;
                     }
                 }
             }
         } else {
+            #ifdef DEBUG_FINE
             Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
                 clock_minutes, display_minutes, state
             );
+            #endif
         }
     }
 
