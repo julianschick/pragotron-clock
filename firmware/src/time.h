@@ -18,10 +18,7 @@ class Time {
         uint8_t parity_error_count;
 
         bool is_timewise_succ(Time* succ, int minute_difference);
-        static Time* decode_telegram(uint8_t* buffer);
-
-    private:
-        static bool parity_check(uint8_t* buffer, int begin, int end);
+        int get_clock_seconds();
 };
     
 #endif // DECODE_H_
