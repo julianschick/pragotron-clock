@@ -6,6 +6,7 @@
 
 #define COIL_ACTIVATION_MS 50
 #define MIN_COIL_INTERVAL_MS 200
+#define HOME_MINUTES 75
 
 class Coil {
     public:
@@ -36,10 +37,19 @@ class Coil {
             }
         }
 
+        inline int get_display_minutes() {
+            return display_minutes;
+        }
+
+        inline void home() {
+            display_minutes = HOME_MINUTES;
+        }
+
     private:
         // 1 if next pulse is to be positive, -1 if next pulse is to be negative
         int8_t polarity = 0;
         uint32_t last_advance = 0;
+        int display_minutes = -1;
 
         inline void advance(uint32_t* now) {
             if (polarity > 0) {
@@ -49,6 +59,10 @@ class Coil {
             }
             polarity = polarity * (-1);
             last_advance = now == NULL ? millis() : *now;
+
+            if (display_minutes != -1) {
+                display_minutes = (display_minutes + 1) % 720;
+            }
         }
 
         inline void positive_pulse() {

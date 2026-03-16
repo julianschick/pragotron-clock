@@ -6,9 +6,6 @@
 #include "decoder.h"
 #include "coil.h"
 
-int clock_minutes = -1;
-int display_minutes = -1;
-
 Decoder* decoder;
 Coil* coil;
 
@@ -64,21 +61,21 @@ bool is_home_position() {
 int state = 0;
 
 void loop() {
+    int clock_seconds = Sync::get_clock_seconds();
+    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % 720;
 
     if (state == 0) {
         coil->advance_if_possible();
         
         if (is_home_position()) {
             state = 1;
-            display_minutes = HOME_MINUTES;
+            coil->home();
         }
     } else if (state == 1) {
-        if (clock_minutes != -1 && display_minutes != clock_minutes) {
+        if (clock_minutes != -1 && coil->get_display_minutes() != clock_minutes) {
             if (coil->advance_if_possible()) {
-                display_minutes = (display_minutes + 1) % 720;
-
                 #ifdef DEBUG_FINE
-                Serial.printf("dm = %d\n", display_minutes);
+                Serial.printf("dm = %d\n", coil->get_display_minutes());
                 #endif
             }
         }
@@ -91,7 +88,7 @@ void loop() {
 
     if (Sync::is_second_pending()) {
         
-        int clock_seconds = Sync::get_clock_seconds();
+        clock_seconds = Sync::get_clock_seconds();
         if (clock_seconds != -1) {
             clock_minutes = (clock_seconds / 60) % 720;
 
@@ -100,26 +97,25 @@ void loop() {
                 clock_seconds / 3600,
                 (clock_seconds / 60) % 60,
                 clock_seconds % 60,
-                clock_minutes, display_minutes, state
+                clock_minutes, coil->get_display_minutes(), state
             );
             #endif
 
             if (clock_seconds % 60 == 0) {
-                if (display_minutes != -1 && ((display_minutes + 1) % 720) == clock_minutes) {
+                if (coil->get_display_minutes() != -1 && ((coil->get_display_minutes() + 1) % 720) == clock_minutes) {
                     if (state == 1) {
                         #ifdef DEBUG_FINE
                         Serial.println(">> advance one minute");
                         #endif
 
                         coil->advance();
-                        display_minutes = (display_minutes + 1) % 720;
                     }
                 }
             }
         } else {
             #ifdef DEBUG_FINE
             Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
-                clock_minutes, display_minutes, state
+                clock_minutes, coil->get_display_minutes(), state
             );
             #endif
         }

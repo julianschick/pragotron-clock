@@ -11,6 +11,4 @@
 #define COIL_POSITIVE D2
 #define COIL_NEGATIVE D3
 
-#define HOME_MINUTES 75
-
 #endif //DEFINES_H_

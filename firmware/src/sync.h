@@ -16,9 +16,9 @@ class Sync {
 
     private:
         inline static uint32_t up_millis = 0;
-        inline static boolean up_millis_pending = false;
+        inline static volatile boolean up_millis_pending = false;
         inline static uint32_t down_millis = 0;
-        inline static boolean down_millis_pending = false;
+        inline static volatile boolean down_millis_pending = false;
         inline static uint8_t unsynced_counter = 255;
         inline static uint32_t timer1_at_flank_up = 0;
 
