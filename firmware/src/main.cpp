@@ -57,27 +57,69 @@ bool is_home_position() {
 }
 
 // 0 = homing
-// 1 = homed
+// 1 = run forward
+// 2 = normal operation
 int state = 0;
 
+#define MINS_OVERFLOW 720
+
 void loop() {
+    bool sec_pending = Sync::is_second_pending();
     int clock_seconds = Sync::get_clock_seconds();
-    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % 720;
+    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % MINS_OVERFLOW;
+
+    #ifdef DEBUG_FINE
+    if (sec_pending) {
+        if (clock_seconds != -1) {
+            clock_minutes = (clock_seconds / 60) % 720;
+            
+            Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
+                clock_seconds / 3600,
+                (clock_seconds / 60) % 60,
+                clock_seconds % 60,
+                clock_minutes, coil->get_display_minutes(), state
+            );
+            
+        } else {
+            Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
+                clock_minutes, coil->get_display_minutes(), state
+            );
+        }   
+    }
+    #endif
 
     if (state == 0) {
         coil->advance_if_possible();
         
         if (is_home_position()) {
+            #ifdef DEBUG
+            Serial.println("<S1> HOMED / WAITING FOR SIGNAL RX");
+            #endif
+
             state = 1;
             coil->home();
         }
     } else if (state == 1) {
-        if (clock_minutes != -1 && coil->get_display_minutes() != clock_minutes) {
-            if (coil->advance_if_possible()) {
-                #ifdef DEBUG_FINE
-                Serial.printf("dm = %d\n", coil->get_display_minutes());
+        if (clock_minutes != -1) {
+            if (coil->get_display_minutes() == clock_minutes) {
+                #ifdef DEBUG
+                Serial.println("<S2> NORMAL OPERATION");
                 #endif
+
+                state = 2;
+            } else {
+                if (coil->advance_if_possible()) {
+                    #ifdef DEBUG_FINE
+                    Serial.printf("dm = %d\n", coil->get_display_minutes());
+                    #endif
+                }
             }
+        } 
+    } else if (state == 2) {
+        int diff = (clock_minutes - coil->get_display_minutes()) % MINS_OVERFLOW;
+
+        if (diff >= 1 && diff <= MINS_OVERFLOW - 5) {
+            coil->advance_if_possible();
         }
     }
 
@@ -85,40 +127,4 @@ void loop() {
     if (signal.has_value()) {
         decoder->next(std::get<0>(signal.value()), std::get<1>(signal.value()));
     }
-
-    if (Sync::is_second_pending()) {
-        
-        clock_seconds = Sync::get_clock_seconds();
-        if (clock_seconds != -1) {
-            clock_minutes = (clock_seconds / 60) % 720;
-
-            #ifdef DEBUG_FINE
-            Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
-                clock_seconds / 3600,
-                (clock_seconds / 60) % 60,
-                clock_seconds % 60,
-                clock_minutes, coil->get_display_minutes(), state
-            );
-            #endif
-
-            if (clock_seconds % 60 == 0) {
-                if (coil->get_display_minutes() != -1 && ((coil->get_display_minutes() + 1) % 720) == clock_minutes) {
-                    if (state == 1) {
-                        #ifdef DEBUG_FINE
-                        Serial.println(">> advance one minute");
-                        #endif
-
-                        coil->advance();
-                    }
-                }
-            }
-        } else {
-            #ifdef DEBUG_FINE
-            Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
-                clock_minutes, coil->get_display_minutes(), state
-            );
-            #endif
-        }
-    }
-
 }

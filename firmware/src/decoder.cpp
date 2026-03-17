@@ -52,14 +52,15 @@ void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
                 minute_diff = static_cast<int>(round(static_cast<double>(Sync::get_clock_seconds() - last_accepted_time->get_clock_seconds()) / 60.0));
             }
 
-            bool accept = t->parity_error_count == 0 && !invalid_bit &&
-                (last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
-
-            invalid_bit = false;
-
-            if (!accept && minute_diff > UNACCEPTED_TELEGRAMS) {
-                accept = true;
+            bool accept_anyway = false;
+            bool erroneous = t->parity_error_count > 0 || invalid_bit || t->is_range_error();
+            bool suspicious_diff = !(last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
+            
+            if (suspicious_diff && abs(minute_diff) > UNACCEPTED_TELEGRAMS) {
+                accept_anyway = true;
             }
+
+            bool accept = accept_anyway || !(suspicious_diff || erroneous);
 
             if (accept) {
                 if (last_accepted_time != NULL) {
@@ -71,7 +72,8 @@ void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
 
             #ifdef DEBUG
             if (!accept) {
-                Serial.printf("[NOT ACCEPTED] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff=%d\n", 
+                Serial.printf("[NOT ACCEPTED %d(%d%d%d)%d] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff=%d\n", 
+                    erroneous, t->parity_error_count, invalid_bit, t->is_range_error(), suspicious_diff,
                     t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, minute_diff
                 );
             } else {
@@ -82,6 +84,7 @@ void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
             Serial.flush();
             #endif
 
+            invalid_bit = false;
             if (!accept) {
                 delete t;
             }

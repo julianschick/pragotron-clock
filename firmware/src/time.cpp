@@ -10,3 +10,11 @@ bool Time::is_timewise_succ(Time* succ, int minute_difference) {
 int Time::get_clock_seconds() {
     return 3600*hour + 60*minute;
 }
+
+bool Time::is_range_error() {
+    return month == 0 || month > 12 
+        || day == 0 || day > 31 
+        || dow == 0 || dow > 7
+        || hour > 23 
+        || minute > 60;
+}

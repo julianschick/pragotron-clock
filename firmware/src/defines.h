@@ -3,7 +3,7 @@
 
 #define DEBUG
 #define DEBUG_FINE
-#define DEBUG_FINEST
+//#define DEBUG_FINEST
 
 #define DCF_IN D7
 #define MINUTE_HOME D5

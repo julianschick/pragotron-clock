@@ -19,6 +19,7 @@ class Time {
 
         bool is_timewise_succ(Time* succ, int minute_difference);
         int get_clock_seconds();
+        bool is_range_error();
 };
     
 #endif // DECODE_H_
