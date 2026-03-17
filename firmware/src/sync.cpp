@@ -39,7 +39,7 @@ void IRAM_ATTR Sync::timerFiredISR() {
     timer1_write(last_timer_max);
 
     if (clock_seconds != -1) {
-        clock_seconds = (clock_seconds + 1) % 86400;
+        clock_seconds = (clock_seconds + 1) % OVERFLOW_SECS;
     }
     
     if (next_second != -1) {

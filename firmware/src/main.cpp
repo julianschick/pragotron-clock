@@ -61,12 +61,10 @@ bool is_home_position() {
 // 2 = normal operation
 int state = 0;
 
-#define MINS_OVERFLOW 720
-
 void loop() {
     bool sec_pending = Sync::is_second_pending();
     int clock_seconds = Sync::get_clock_seconds();
-    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % MINS_OVERFLOW;
+    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % OVERFLOW_MINS;
 
     #ifdef DEBUG_FINE
     if (sec_pending) {
@@ -116,9 +114,9 @@ void loop() {
             }
         } 
     } else if (state == 2) {
-        int diff = (clock_minutes - coil->get_display_minutes()) % MINS_OVERFLOW;
+        int diff = (clock_minutes - coil->get_display_minutes()) % OVERFLOW_MINS;
 
-        if (diff >= 1 && diff <= MINS_OVERFLOW - 5) {
+        if (diff >= 1 && diff <= OVERFLOW_MINS - 5) {
             coil->advance_if_possible();
         }
     }

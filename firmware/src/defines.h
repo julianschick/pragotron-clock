@@ -11,4 +11,7 @@
 #define COIL_POSITIVE D2
 #define COIL_NEGATIVE D3
 
+#define OVERFLOW_MINS 720
+#define OVERFLOW_SECS 86400
+
 #endif //DEFINES_H_

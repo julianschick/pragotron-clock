@@ -6,7 +6,8 @@
 
 #define ACCEPTED_SIGNAL_DURATION_DEVIATION_MS 45
 #define ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS 200
-#define UNACCEPTED_TELEGRAMS 15
+#define MAX_SUSPICIOUS_TIME_FRAMES 9
+#define SUSPICIOUS_SECOND_DIFF_THRS 5
 
 class Decoder {
     public:
@@ -18,6 +19,7 @@ class Decoder {
         uint8_t buffer[8];
         unsigned long last_bit_rx_time;
         //
+        int suspicious_time_counter = 0;
         Time* last_accepted_time = NULL;
 
         Time* decode_buffer();

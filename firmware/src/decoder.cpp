@@ -47,47 +47,56 @@ void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
 
         if (cursor == 59) {
             Time* t = decode_buffer();
-            int minute_diff = UNACCEPTED_TELEGRAMS + 1;
-            if (last_accepted_time != NULL) {
-                minute_diff = static_cast<int>(round(static_cast<double>(Sync::get_clock_seconds() - last_accepted_time->get_clock_seconds()) / 60.0));
-            }
+                        
+            // if (last_accepted_time != NULL) {
+            //     minute_diff = static_cast<int>(round(static_cast<double>(Sync::get_clock_seconds() - last_accepted_time->get_clock_seconds()) / 60.0));
+            // }
 
             bool accept_anyway = false;
             bool erroneous = t->parity_error_count > 0 || invalid_bit || t->is_range_error();
-            bool suspicious_diff = !(last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
+            //bool suspicious_diff = !(last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
+            bool suspicious_time = Sync::get_clock_seconds() != -1 
+                && (Sync::get_clock_seconds() - t->get_clock_seconds()) % OVERFLOW_SECS >= SUSPICIOUS_SECOND_DIFF_THRS
+                && (t->get_clock_seconds() - Sync::get_clock_seconds()) % OVERFLOW_SECS >= SUSPICIOUS_SECOND_DIFF_THRS;
             
-            if (suspicious_diff && abs(minute_diff) > UNACCEPTED_TELEGRAMS) {
-                accept_anyway = true;
+            
+            if (suspicious_time) {
+                suspicious_time_counter++;
+
+                if (suspicious_time_counter > MAX_SUSPICIOUS_TIME_FRAMES) {
+                   accept_anyway = true;
+                   suspicious_time_counter = 0;
+                }
             }
 
-            bool accept = accept_anyway || !(suspicious_diff || erroneous);
+            bool accept = accept_anyway || !(suspicious_time || erroneous);
 
             if (accept) {
-                if (last_accepted_time != NULL) {
-                    delete last_accepted_time;
-                }
-                last_accepted_time = t;
+                // if (last_accepted_time != NULL) {
+                //     delete last_accepted_time;
+                // }
+                // last_accepted_time = t;
                 Sync::set_next_second(t->get_clock_seconds() - 1);
             }
 
             #ifdef DEBUG
             if (!accept) {
-                Serial.printf("[NOT ACCEPTED %d(%d%d%d)%d] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff=%d\n", 
-                    erroneous, t->parity_error_count, invalid_bit, t->is_range_error(), suspicious_diff,
-                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, minute_diff
+                Serial.printf("[NOT ACCEPTED %d(%d%d%d)%d] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, stc=%d\n", 
+                    erroneous, t->parity_error_count, invalid_bit, t->is_range_error(), suspicious_time,
+                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, suspicious_time_counter
                 );
             } else {
-                Serial.printf("%02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, minute_diff=%d\n", 
-                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, minute_diff
+                Serial.printf("%02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, stc=%d\n", 
+                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, suspicious_time_counter
                 );
             }
             Serial.flush();
             #endif
 
             invalid_bit = false;
-            if (!accept) {
+            //if (!accept) {
                 delete t;
-            }
+            //}
         }
     }
 }
