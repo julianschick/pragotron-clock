@@ -14,4 +14,9 @@
 #define OVERFLOW_MINS 720
 #define OVERFLOW_SECS 86400
 
+inline int modulo(int a, int b) {
+    const int result = a % b;
+    return result >= 0 ? result : result + b;
+}
+
 #endif //DEFINES_H_

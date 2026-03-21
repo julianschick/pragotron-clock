@@ -23,7 +23,7 @@ class Decoder {
         Time* last_accepted_time = NULL;
 
         Time* decode_buffer();
-        static bool parity_check(uint8_t* buffer, int begin, int end);
+        static bool parity_check(const uint8_t* buffer, const int begin, const int end);
 };
 
 

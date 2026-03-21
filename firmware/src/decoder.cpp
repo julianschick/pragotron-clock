@@ -4,7 +4,7 @@
 #include "defines.h"
 #include "sync.h"
 
-void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
+void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
     int bit = -1;
     if (signal_duration > 100 - ACCEPTED_SIGNAL_DURATION_DEVIATION_MS && 
         signal_duration < 100 + ACCEPTED_SIGNAL_DURATION_DEVIATION_MS) {
@@ -55,10 +55,12 @@ void Decoder::next(uint32_t rx_time, uint32_t signal_duration) {
             bool accept_anyway = false;
             bool erroneous = t->parity_error_count > 0 || invalid_bit || t->is_range_error();
             //bool suspicious_diff = !(last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
-            bool suspicious_time = Sync::get_clock_seconds() != -1 
-                && (Sync::get_clock_seconds() - t->get_clock_seconds()) % OVERFLOW_SECS >= SUSPICIOUS_SECOND_DIFF_THRS
-                && (t->get_clock_seconds() - Sync::get_clock_seconds()) % OVERFLOW_SECS >= SUSPICIOUS_SECOND_DIFF_THRS;
-            
+
+            const int cs = Sync::get_clock_seconds();
+            const int d = cs - t->get_clock_seconds();
+            bool suspicious_time = cs != -1 
+                && modulo(d, OVERFLOW_SECS) >= SUSPICIOUS_SECOND_DIFF_THRS
+                && modulo(-d, OVERFLOW_SECS) >= SUSPICIOUS_SECOND_DIFF_THRS;
             
             if (suspicious_time) {
                 suspicious_time_counter++;
@@ -149,7 +151,7 @@ Time* Decoder::decode_buffer() {
     };
 }
 
-bool Decoder::parity_check(uint8_t* buffer, int begin, int end) {
+bool Decoder::parity_check(const uint8_t* buffer, const int begin, const int end) {
     bool parity = false;
     for (int i = begin; i <= end; i++) {
         if ((buffer[i / 8] & (0x01 << (i % 8))) != 0) {

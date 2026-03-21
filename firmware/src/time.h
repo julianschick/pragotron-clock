@@ -5,21 +5,21 @@
 
 class Time {
     public: 
-        bool summer_time;
-        bool time_change;
-        bool leap_second;
+        const bool summer_time;
+        const bool time_change;
+        const bool leap_second;
         //
-        uint8_t year;
-        uint8_t month;
-        uint8_t day;
-        uint8_t dow;
-        uint8_t hour;
-        uint8_t minute;
-        uint8_t parity_error_count;
+        const uint8_t year;
+        const uint8_t month;
+        const uint8_t day;
+        const uint8_t dow;
+        const uint8_t hour;
+        const uint8_t minute;
+        const uint8_t parity_error_count;
 
-        bool is_timewise_succ(Time* succ, int minute_difference);
-        int get_clock_seconds();
-        bool is_range_error();
+        bool is_timewise_succ(const Time* succ, const int minute_difference) const;
+        int get_clock_seconds() const;
+        bool is_range_error() const;
 };
     
 #endif // DECODE_H_

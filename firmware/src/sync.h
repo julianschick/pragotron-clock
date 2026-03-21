@@ -33,7 +33,7 @@ class Sync {
         static void IRAM_ATTR inputLevelChangedISR();
         static void IRAM_ATTR timerFiredISR();
 
-        static void set_next_second(int val) {
+        static void set_next_second(const int val) {
             next_second = val;
         }
         

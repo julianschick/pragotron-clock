@@ -62,22 +62,19 @@ bool is_home_position() {
 int state = 0;
 
 void loop() {
-    bool sec_pending = Sync::is_second_pending();
-    int clock_seconds = Sync::get_clock_seconds();
-    int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % OVERFLOW_MINS;
+    const bool sec_pending = Sync::is_second_pending();
+    const int clock_seconds = Sync::get_clock_seconds();
+    const int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % OVERFLOW_MINS;
 
     #ifdef DEBUG_FINE
     if (sec_pending) {
         if (clock_seconds != -1) {
-            clock_minutes = (clock_seconds / 60) % 720;
-            
             Serial.printf("%02d:%02d:%02d cm=%d | dm = %d | state = %d\n", 
                 clock_seconds / 3600,
                 (clock_seconds / 60) % 60,
                 clock_seconds % 60,
                 clock_minutes, coil->get_display_minutes(), state
             );
-            
         } else {
             Serial.printf("?:?:? cm=%d | dm = %d | state = %d\n", 
                 clock_minutes, coil->get_display_minutes(), state
@@ -114,14 +111,14 @@ void loop() {
             }
         } 
     } else if (state == 2) {
-        int diff = (clock_minutes - coil->get_display_minutes()) % OVERFLOW_MINS;
+        const int diff = modulo(clock_minutes - coil->get_display_minutes(), OVERFLOW_MINS);
 
         if (diff >= 1 && diff <= OVERFLOW_MINS - 5) {
             coil->advance_if_possible();
         }
     }
 
-    auto signal = Sync::signal_pending();
+    const auto signal = Sync::signal_pending();
     if (signal.has_value()) {
         decoder->next(std::get<0>(signal.value()), std::get<1>(signal.value()));
     }

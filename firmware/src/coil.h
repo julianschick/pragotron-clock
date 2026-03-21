@@ -37,7 +37,7 @@ class Coil {
             }
         }
 
-        inline int get_display_minutes() {
+        inline int get_display_minutes() const {
             return display_minutes;
         }
 
@@ -51,7 +51,7 @@ class Coil {
         uint32_t last_advance = 0;
         int display_minutes = -1;
 
-        inline void advance(uint32_t* now) {
+        inline void advance(const uint32_t* now) {
             if (polarity > 0) {
                 positive_pulse();
             } else if (polarity < 0) {
