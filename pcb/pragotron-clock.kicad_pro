@@ -16,7 +16,7 @@
         "copper_text_thickness": 0.3,
         "copper_text_upright": false,
         "courtyard_line_width": 0.05,
-        "dimension_precision": 4,
+        "dimension_precision": 5,
         "dimension_units": 3,
         "dimensions": {
           "arrow_length": 1270000,
@@ -54,7 +54,96 @@
         }
       },
       "diff_pair_dimensions": [],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "copper_edge_clearance|79510400|104750411|acd3e171-b58a-4e82-b6de-bae5eb756cd5|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563",
+          ""
+        ],
+        [
+          "courtyards_overlap|119307500|162783803|14203e7f-6c46-41cc-99b2-f19ed87d7018|a5576188-6a90-4a51-85d0-23c9c0a174e1",
+          ""
+        ],
+        [
+          "courtyards_overlap|82855000|139525000|0985d36e-2aaf-4682-8c16-3b4e4ce7dc93|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "courtyards_overlap|84354500|114679000|5ce9491f-50c5-4dcb-98d7-e33d75742e46|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "courtyards_overlap|85362159|106005000|70c2f7f5-0b67-40a6-8638-b6b22b84bf05|fb369761-b88c-460d-82c0-f8d3e59f3e4a",
+          ""
+        ],
+        [
+          "courtyards_overlap|91331000|116453000|ee5a8918-7041-43e1-95eb-b49d61f85455|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "courtyards_overlap|91640000|136095000|a9c515a4-c305-4876-8bb3-edc2c03e1926|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "courtyards_overlap|94887000|116453000|0677bf6d-5806-48ec-ac9e-33d51090a35f|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "courtyards_overlap|99855000|120525000|36d38467-9130-4c18-a296-65bc7e2795ea|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          ""
+        ],
+        [
+          "duplicate_footprints|82500000|105000000|fb369761-b88c-460d-82c0-f8d3e59f3e4a|14203e7f-6c46-41cc-99b2-f19ed87d7018",
+          ""
+        ],
+        [
+          "extra_footprint|120500000|160000000|14203e7f-6c46-41cc-99b2-f19ed87d7018|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "extra_footprint|82500000|105000000|fb369761-b88c-460d-82c0-f8d3e59f3e4a|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "silk_edge_clearance|103310000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|23ae75b4-6860-4c0a-8f0f-5b04eeaaad76",
+          ""
+        ],
+        [
+          "silk_edge_clearance|104190000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|38557a4f-330c-40fa-b4eb-723a1d09f912",
+          ""
+        ],
+        [
+          "silk_edge_clearance|106687500|162962500|acd3e171-b58a-4e82-b6de-bae5eb756cd5|2bbf155b-d1c2-41ee-be28-cbfba065c652",
+          ""
+        ],
+        [
+          "silk_edge_clearance|114310000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|eafcdd3d-6bb9-4b67-be6e-a7c2ecb2e843",
+          ""
+        ],
+        [
+          "silk_edge_clearance|115190000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|091e4103-f168-44f7-a04e-4bef48e73a58",
+          ""
+        ],
+        [
+          "silk_edge_clearance|115687500|162962500|acd3e171-b58a-4e82-b6de-bae5eb756cd5|acba0177-0baf-4226-b486-5d2e857f553f",
+          ""
+        ],
+        [
+          "silk_edge_clearance|115687500|162962500|acd3e171-b58a-4e82-b6de-bae5eb756cd5|be3b5e72-aa1f-4340-a2b5-4f674739d2e1",
+          ""
+        ],
+        [
+          "silk_edge_clearance|122810000|103085868|acd3e171-b58a-4e82-b6de-bae5eb756cd5|889991cf-bf0f-4d21-90df-10104df49509",
+          ""
+        ],
+        [
+          "silk_edge_clearance|87842000|163000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|073ecac9-29c0-482c-96de-0699a830bc9f",
+          ""
+        ],
+        [
+          "silk_edge_clearance|93190000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|c9c34ea3-6fc6-4306-9171-62142a7c8433",
+          ""
+        ]
+      ],
       "meta": {
         "version": 2
       },
@@ -104,7 +193,7 @@
         "skew_out_of_range": "error",
         "solder_mask_bridge": "error",
         "starved_thermal": "error",
-        "text_height": "warning",
+        "text_height": "ignore",
         "text_on_edge_cuts": "error",
         "text_thickness": "warning",
         "through_hole_pad_without_hole": "error",
@@ -658,7 +747,7 @@
         "uuid": "c2785e23-16ef-46a4-bf22-e47ee5f90a07"
       }
     ],
-    "used_designators": "",
+    "used_designators": "L1,C4-5,U3",
     "variants": []
   },
   "sheets": [
