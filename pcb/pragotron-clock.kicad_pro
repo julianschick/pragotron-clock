@@ -56,6 +56,10 @@
       "diff_pair_dimensions": [],
       "drc_exclusions": [
         [
+          "copper_edge_clearance|120749584|102010400|acd3e171-b58a-4e82-b6de-bae5eb756cd5|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563",
+          ""
+        ],
+        [
           "copper_edge_clearance|79510400|104750411|acd3e171-b58a-4e82-b6de-bae5eb756cd5|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563",
           ""
         ],
@@ -334,6 +338,14 @@
   },
   "erc": {
     "erc_exclusions": [
+      [
+        "footprint_link_issues|1358900|1778000|aa602e40-22a9-4474-9cf3-646aaf20e99f|00000000-0000-0000-0000-000000000000|||",
+        ""
+      ],
+      [
+        "footprint_link_issues|596900|1485900|4867e015-994a-4ceb-bf90-95821cc84e81|00000000-0000-0000-0000-000000000000|||",
+        ""
+      ],
       [
         "footprint_link_issues|927100|1651000|aa602e40-22a9-4474-9cf3-646aaf20e99f|00000000-0000-0000-0000-000000000000|||",
         ""
@@ -747,7 +759,7 @@
         "uuid": "c2785e23-16ef-46a4-bf22-e47ee5f90a07"
       }
     ],
-    "used_designators": "L1,C4-5,U3",
+    "used_designators": "#FLG3,#PWR5-6,L1,C4-5,U3",
     "variants": []
   },
   "sheets": [
