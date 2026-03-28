@@ -1,4 +1,19 @@
 #include "sync.h"
+#include "decoder.h" // for MINIMAL_ONE_TIME
+
+std::optional<std::pair<uint32_t, uint32_t>> Sync::signal_pending() {
+    if (up_millis_pending && down_millis_pending) {
+        up_millis_pending = false;
+        down_millis_pending = false;
+        if (down_millis - up_millis >= MINIMAL_ZERO_TIME) {
+            return std::pair(up_millis, down_millis - up_millis);
+        } else {
+            return {};
+        }
+    } else {
+        return {};
+    }
+}
 
 void IRAM_ATTR Sync::inputLevelChangedISR() {
     int v = digitalRead(DCF_IN);

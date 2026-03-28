@@ -12,32 +12,54 @@
 #define UNSYNCED_THRS 100000
 #define MAX_UNSYNCED_COUNTER 15
 
+#define MINIMAL_SIGNAL_MS 50
+
 class Sync {
 
     private:
-        inline static uint32_t up_millis = 0;
-        inline static volatile boolean up_millis_pending = false;
-        inline static uint32_t down_millis = 0;
-        inline static volatile boolean down_millis_pending = false;
-        inline static uint8_t unsynced_counter = 255;
-        inline static uint32_t timer1_at_flank_up = 0;
+        inline static Sync* instance = NULL;
 
-        inline static volatile uint32_t timer_read = 0;
-        inline static uint32_t last_timer_max = TIM1_SECOND;
-        inline static volatile bool sec_pending = false;
+        uint32_t up_millis = 0;
+        volatile boolean up_millis_pending = false;
+        uint32_t down_millis = 0;
+        volatile boolean down_millis_pending = false;
+        uint8_t unsynced_counter = 255;
+        uint32_t timer1_at_flank_up = 0;
 
-        inline static int next_second = -1;
-        inline static int clock_seconds = -1;
+        volatile uint32_t timer_read = 0;
+        uint32_t last_timer_max = TIM1_SECOND;
+        volatile bool sec_pending = false;
+
+        int next_second = -1;
+        int clock_seconds = -1;
+
+        void IRAM_ATTR inputLevelChangedISR();
+        void IRAM_ATTR timerFiredISR();
 
     public:
-        static void IRAM_ATTR inputLevelChangedISR();
-        static void IRAM_ATTR timerFiredISR();
+        Sync() {
+            if (instance == NULL) {
+                instance = this;
+            }
+        }
 
-        static void set_next_second(const int val) {
+        static void IRAM_ATTR inputLevelChangedISR_() {
+            if (instance != NULL) {
+                instance->inputLevelChangedISR();
+            }
+
+        }
+        static void IRAM_ATTR timerFiredISR_() {
+            if (instance != NULL) {
+                instance->timerFiredISR();
+            }
+        }
+
+        void set_next_second(const int val) {
             next_second = val;
         }
         
-        static int get_clock_seconds() {
+        int get_clock_seconds() {
             return clock_seconds;
         }
 
@@ -47,17 +69,9 @@ class Sync {
         }
         #endif
 
-        static std::optional<std::pair<uint32_t, uint32_t>> signal_pending() {
-            if (up_millis_pending && down_millis_pending) {
-                up_millis_pending = false;
-                down_millis_pending = false;
-                return std::pair(up_millis, down_millis - up_millis);
-            } else {
-                return {};
-            }
-        }
+        std::optional<std::pair<uint32_t, uint32_t>> signal_pending();
 
-        static bool is_second_pending() {
+        bool is_second_pending() {
             bool result = sec_pending;
             sec_pending = false;
             return result;

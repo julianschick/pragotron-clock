@@ -6,12 +6,10 @@
 
 void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
     int bit = -1;
-    if (signal_duration > 100 - ACCEPTED_SIGNAL_DURATION_DEVIATION_MS && 
-        signal_duration < 100 + ACCEPTED_SIGNAL_DURATION_DEVIATION_MS) {
+    if (signal_duration >= MINIMAL_ZERO_TIME && signal_duration <= MAXIMAL_ZERO_TIME) {
         bit = 0;
     }
-    if (signal_duration > 200 - ACCEPTED_SIGNAL_DURATION_DEVIATION_MS && 
-        signal_duration < 200 + ACCEPTED_SIGNAL_DURATION_DEVIATION_MS) {
+    if (signal_duration >= MINIMAL_ONE_TIME && signal_duration <= MAXIMAL_ONE_TIME) {
         bit = 1;
     }
 
@@ -21,9 +19,7 @@ void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
         unsigned long rx_time_diff = rx_time - last_bit_rx_time;
         last_bit_rx_time = rx_time;
 
-        if (cursor >= 59 || 
-            ((rx_time_diff > 2000 - ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS) && 
-             (rx_time_diff < 2000 + ACCEPTED_MINUTE_SIGNAL_DURATION_DEVIATION_MS))) {
+        if (cursor >= 59 || (rx_time_diff >= MINIMAL_MINUTE_PAUSE_TIME && rx_time_diff <= MAXIMAL_MINUTE_PAUSE_TIME)) {
             cursor = 0;
         }
 
@@ -33,7 +29,7 @@ void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
         cursor++;
 
         #ifdef DEBUG_FINE
-        if (Sync::get_clock_seconds() == -1) {
+        if (sync->get_clock_seconds() == -1) {
             Serial.printf("buf[%d] = %d\n", cursor - 1, bit);
         }
         #endif
@@ -46,18 +42,18 @@ void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
         #endif
 
         if (cursor == 59) {
-            Time* t = decode_buffer();
+            Time t = decode_buffer();
                         
             // if (last_accepted_time != NULL) {
             //     minute_diff = static_cast<int>(round(static_cast<double>(Sync::get_clock_seconds() - last_accepted_time->get_clock_seconds()) / 60.0));
             // }
 
             bool accept_anyway = false;
-            bool erroneous = t->parity_error_count > 0 || invalid_bit || t->is_range_error();
+            bool erroneous = t.parity_error_count > 0 || invalid_bit || t.is_range_error();
             //bool suspicious_diff = !(last_accepted_time == NULL || last_accepted_time->is_timewise_succ(t, minute_diff));
 
-            const int cs = Sync::get_clock_seconds();
-            const int d = cs - t->get_clock_seconds();
+            const int cs = sync->get_clock_seconds();
+            const int d = cs - t.get_clock_seconds();
             bool suspicious_time = cs != -1 
                 && modulo(d, OVERFLOW_SECS) >= SUSPICIOUS_SECOND_DIFF_THRS
                 && modulo(-d, OVERFLOW_SECS) >= SUSPICIOUS_SECOND_DIFF_THRS;
@@ -78,33 +74,30 @@ void Decoder::next(const uint32_t rx_time, const uint32_t signal_duration) {
                 //     delete last_accepted_time;
                 // }
                 // last_accepted_time = t;
-                Sync::set_next_second(t->get_clock_seconds() - 1);
+                sync->set_next_second(t.get_clock_seconds() - 1);
             }
 
             #ifdef DEBUG
             if (!accept) {
                 Serial.printf("[NOT ACCEPTED %d(%d%d%d)%d] %02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, stc=%d\n", 
-                    erroneous, t->parity_error_count, invalid_bit, t->is_range_error(), suspicious_time,
-                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, suspicious_time_counter
+                    erroneous, t.parity_error_count, invalid_bit, t.is_range_error(), suspicious_time,
+                    t.year, t.month, t.day, t.hour, t.minute, t.summer_time ? "MESZ" : "MEZ", t.dow, t.parity_error_count, suspicious_time_counter
                 );
             } else {
                 Serial.printf("%02d-%02d-%02d %02d:%02d %s, dow = %d, err_count=%d, stc=%d\n", 
-                    t->year, t->month, t->day, t->hour, t->minute, t->summer_time ? "MESZ" : "MEZ", t->dow, t->parity_error_count, suspicious_time_counter
+                    t.year, t.month, t.day, t.hour, t.minute, t.summer_time ? "MESZ" : "MEZ", t.dow, t.parity_error_count, suspicious_time_counter
                 );
             }
             Serial.flush();
             #endif
 
             invalid_bit = false;
-            //if (!accept) {
-                delete t;
-            //}
         }
     }
 }
 
 
-Time* Decoder::decode_buffer() {
+Time Decoder::decode_buffer() {
     uint8_t parity_error_count = 0;
     
     bool time_change = (buffer[2] & 0x01) != 0;
@@ -139,7 +132,7 @@ Time* Decoder::decode_buffer() {
         parity_error_count++;
     }
     
-    return new Time {
+    return Time {
         summer_time, time_change, leap_second,
         static_cast<uint8_t>(year_one + 10*year_ten),
         static_cast<uint8_t>(month_one + 10*month_ten),

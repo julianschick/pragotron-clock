@@ -8,11 +8,12 @@
 
 Decoder* decoder;
 Coil* coil;
+Sync* sync;
 
 inline void init_timer1() {
     timer1_enable(TIM1_DIVIDER, TIM_EDGE, TIM_SINGLE);
     timer1_write(TIM1_SECOND);
-    timer1_attachInterrupt(Sync::timerFiredISR);
+    timer1_attachInterrupt(Sync::timerFiredISR_);
 }
 
 inline void init_pins() {
@@ -31,7 +32,7 @@ inline void init_pins() {
     pinMode(MINUTE_HOME, INPUT);
     pinMode(HOUR_HOME, INPUT);
 
-    attachInterrupt(digitalPinToInterrupt(DCF_IN), Sync::inputLevelChangedISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(DCF_IN), Sync::inputLevelChangedISR_, CHANGE);
 }
 
 void setup() {
@@ -41,13 +42,14 @@ void setup() {
     #endif
 
     noInterrupts();
+    sync = new Sync();
 
     init_timer1();
     init_pins();
 
     delay(100);
     coil = new Coil();
-    decoder = new Decoder();
+    decoder = new Decoder(sync);
 
     interrupts();
 }
@@ -62,8 +64,8 @@ bool is_home_position() {
 int state = 0;
 
 void loop() {
-    const bool sec_pending = Sync::is_second_pending();
-    const int clock_seconds = Sync::get_clock_seconds();
+    const bool sec_pending = sync->is_second_pending();
+    const int clock_seconds = sync->get_clock_seconds();
     const int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % OVERFLOW_MINS;
 
     #ifdef DEBUG_FINE
@@ -84,6 +86,8 @@ void loop() {
     #endif
 
     if (state == 0) {
+        digitalWrite(LED_BUILTIN, HIGH);
+
         coil->advance_if_possible();
         
         if (is_home_position()) {
@@ -95,6 +99,8 @@ void loop() {
             coil->home();
         }
     } else if (state == 1) {
+        digitalWrite(LED_BUILTIN, HIGH);
+
         if (clock_minutes != -1) {
             if (coil->get_display_minutes() == clock_minutes) {
                 #ifdef DEBUG
@@ -111,6 +117,8 @@ void loop() {
             }
         } 
     } else if (state == 2) {
+        digitalWrite(LED_BUILTIN, LOW);
+        
         const int diff = modulo(clock_minutes - coil->get_display_minutes(), OVERFLOW_MINS);
 
         if (diff >= 1 && diff <= OVERFLOW_MINS - 5) {
@@ -118,7 +126,7 @@ void loop() {
         }
     }
 
-    const auto signal = Sync::signal_pending();
+    const auto signal = sync->signal_pending();
     if (signal.has_value()) {
         decoder->next(std::get<0>(signal.value()), std::get<1>(signal.value()));
     }
