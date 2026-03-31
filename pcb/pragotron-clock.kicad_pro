@@ -146,6 +146,10 @@
         [
           "silk_edge_clearance|93190000|102000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|c9c34ea3-6fc6-4306-9171-62142a7c8433",
           ""
+        ],
+        [
+          "starved_thermal|80330125|122762125|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563|b115b055-1bc0-4b97-b34c-5be4f4d57ae8|F.Cu",
+          ""
         ]
       ],
       "meta": {
@@ -165,10 +169,10 @@
         "duplicate_footprints": "warning",
         "extra_footprint": "warning",
         "footprint": "error",
-        "footprint_filters_mismatch": "ignore",
+        "footprint_filters_mismatch": "warning",
         "footprint_symbol_field_mismatch": "warning",
         "footprint_symbol_mismatch": "warning",
-        "footprint_type_mismatch": "ignore",
+        "footprint_type_mismatch": "warning",
         "hole_clearance": "error",
         "hole_to_hole": "warning",
         "holes_co_located": "warning",
@@ -182,7 +186,7 @@
         "malformed_courtyard": "error",
         "microvia_drill_out_of_range": "error",
         "mirrored_text_on_front_layer": "warning",
-        "missing_courtyard": "ignore",
+        "missing_courtyard": "warning",
         "missing_footprint": "warning",
         "missing_tuning_profile": "warning",
         "net_conflict": "warning",
@@ -204,12 +208,12 @@
         "too_many_vias": "error",
         "track_angle": "error",
         "track_dangling": "warning",
-        "track_not_centered_on_via": "ignore",
+        "track_not_centered_on_via": "warning",
         "track_on_post_machined_layer": "error",
         "track_segment_length": "error",
         "track_width": "error",
         "tracks_crossing": "error",
-        "tuning_profile_track_geometries": "ignore",
+        "tuning_profile_track_geometries": "warning",
         "unconnected_items": "error",
         "unresolved_variable": "error",
         "via_dangling": "warning",
@@ -340,6 +344,10 @@
     "erc_exclusions": [
       [
         "footprint_link_issues|1358900|1778000|aa602e40-22a9-4474-9cf3-646aaf20e99f|00000000-0000-0000-0000-000000000000|||",
+        ""
+      ],
+      [
+        "footprint_link_issues|2349500|1358900|aa602e40-22a9-4474-9cf3-646aaf20e99f|00000000-0000-0000-0000-000000000000|||",
         ""
       ],
       [
@@ -624,7 +632,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "gerber/",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "",
