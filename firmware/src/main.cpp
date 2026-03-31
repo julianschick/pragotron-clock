@@ -11,7 +11,7 @@ Coil* coil;
 Sync* sync;
 
 inline void init_timer1() {
-    timer1_enable(TIM1_DIVIDER, TIM_EDGE, TIM_SINGLE);
+    timer1_enable(TIM1_DIVIDER, TIM_EDGE, TIM_LOOP);
     timer1_write(TIM1_SECOND);
     timer1_attachInterrupt(Sync::timerFiredISR_);
 }
@@ -37,7 +37,7 @@ inline void init_pins() {
 
 void setup() {
     WiFi.mode(WIFI_OFF);
-    #if defined DEBUG || defined DEBUG_FINE || defined DEBUG_FINEST
+    #if defined DEBUG || defined DEBUG_FINE || defined DEBUG_FINEST || defined DEBUG_SYNC
     Serial.begin(9600);
     #endif
 
@@ -64,7 +64,15 @@ bool is_home_position() {
 int state = 0;
 
 void loop() {
+    const auto signal = sync->signal_pending();
+    if (signal.has_value()) {
+        decoder->next(std::get<0>(signal.value()), std::get<1>(signal.value()));
+    }
+
+    #ifdef DEBUG_FINE
     const bool sec_pending = sync->is_second_pending();
+    #endif
+
     const int clock_seconds = sync->get_clock_seconds();
     const int clock_minutes = clock_seconds == -1 ? -1 : (clock_seconds / 60) % OVERFLOW_MINS;
 
@@ -86,7 +94,7 @@ void loop() {
     #endif
 
     if (state == 0) {
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(LED_BUILTIN, LOW);
 
         coil->advance_if_possible();
         
@@ -99,7 +107,7 @@ void loop() {
             coil->home();
         }
     } else if (state == 1) {
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(LED_BUILTIN, LOW);
 
         if (clock_minutes != -1) {
             if (coil->get_display_minutes() == clock_minutes) {
@@ -117,8 +125,8 @@ void loop() {
             }
         } 
     } else if (state == 2) {
-        digitalWrite(LED_BUILTIN, LOW);
-        
+        digitalWrite(LED_BUILTIN, HIGH);
+
         const int diff = modulo(clock_minutes - coil->get_display_minutes(), OVERFLOW_MINS);
 
         if (diff >= 1 && diff <= OVERFLOW_MINS - 5) {
@@ -126,8 +134,4 @@ void loop() {
         }
     }
 
-    const auto signal = sync->signal_pending();
-    if (signal.has_value()) {
-        decoder->next(std::get<0>(signal.value()), std::get<1>(signal.value()));
-    }
 }

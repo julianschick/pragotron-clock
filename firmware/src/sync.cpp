@@ -23,6 +23,7 @@ void IRAM_ATTR Sync::inputLevelChangedISR() {
         up_millis_pending = true;
         if (timer1_enabled()) {
             timer1_at_flank_up = timer1_read();
+            flank_up_pending = true;
         }
     } else {
         down_millis = millis();
@@ -32,26 +33,48 @@ void IRAM_ATTR Sync::inputLevelChangedISR() {
 
 void IRAM_ATTR Sync::timerFiredISR() {
     int8_t sign = timer1_at_flank_up < TIM1_HALFSECOND ? -1 : 1;
-    uint32_t diff = sign == -1 ? 
-        timer1_at_flank_up : last_timer_max - timer1_at_flank_up;
+    uint32_t diff = sign == -1 ? timer1_at_flank_up : last_timer_max - timer1_at_flank_up;
+
+    #ifdef DEBUG_SYNC
+    Serial.printf("[sync] tim1 = %d, diff = %s%d\n", timer1_at_flank_up, sign > 0 ? "+" : "-", diff);
+    #endif
 
     if (diff > UNSYNCED_THRS && unsynced_counter < 255) {
         unsynced_counter++;
+
+        #ifdef DEBUG_SYNC
+        Serial.printf("[sync] not in sync -> unsynced_counter = %d\n", unsynced_counter);
+        #endif
     }
 
-    if (diff > ADAPTION_THRS && (diff <= UNSYNCED_THRS || unsynced_counter >= MAX_UNSYNCED_COUNTER)) {
+    uint32_t next_timer_max = TIM1_SECOND;
+
+    if (flank_up_pending && diff > ADAPTION_THRS && (diff <= UNSYNCED_THRS || unsynced_counter >= MAX_UNSYNCED_COUNTER)) {
+        
+        #ifdef DEBUG_SYNC    
+        Serial.print("[sync] adapting");
+        if (unsynced_counter > 0) {
+            Serial.print(", unsynced_counter zeroed.");
+        }
+        Serial.println("");
+        #endif
+
         if (sign == -1) {
             // timer fired too late -> make next timer period shorter
-            last_timer_max = TIM1_SECOND - diff;
+            next_timer_max = TIM1_SECOND - (diff/2);
         } else {
             // timer fired too early -> make next timer period longer
-            last_timer_max = TIM1_SECOND + diff;
+            next_timer_max = TIM1_SECOND + (diff/2);
         }
+
         unsynced_counter = 0;
-    } else {
-        last_timer_max = TIM1_SECOND;
+        timer1_write(next_timer_max);
+    } else if (last_timer_max != TIM1_SECOND) {
+        timer1_write(TIM1_SECOND);
     }
-    timer1_write(last_timer_max);
+
+    flank_up_pending = false;
+    last_timer_max = next_timer_max;
 
     if (clock_seconds != -1) {
         clock_seconds = (clock_seconds + 1) % OVERFLOW_SECS;
@@ -67,13 +90,7 @@ void IRAM_ATTR Sync::timerFiredISR() {
         next_second = -1;
     }
     
-    sec_pending = true;
-
-    #ifdef DEBUG_FINEST
-    Serial.printf("@up = %d, D = %d*%d, [[%d]]\n", 
-        timer1_at_flank_up,
-        sign, diff,
-        unsynced_counter
-    );
+    #ifdef DEBUG_FINE 
+    sec_pending = true; 
     #endif
 }

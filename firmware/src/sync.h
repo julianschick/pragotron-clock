@@ -6,13 +6,11 @@
 
 #define TIM1_SECOND     5000000
 #define TIM1_HALFSECOND 2500000
-#define TIM1_DIVIDER TIM_DIV16
+#define TIM1_DIVIDER    TIM_DIV16
 
-#define ADAPTION_THRS 100
-#define UNSYNCED_THRS 100000
+#define ADAPTION_THRS 100000
+#define UNSYNCED_THRS 900000
 #define MAX_UNSYNCED_COUNTER 15
-
-#define MINIMAL_SIGNAL_MS 50
 
 class Sync {
 
@@ -24,11 +22,15 @@ class Sync {
         uint32_t down_millis = 0;
         volatile boolean down_millis_pending = false;
         uint8_t unsynced_counter = 255;
+
         uint32_t timer1_at_flank_up = 0;
+        boolean flank_up_pending = false;
 
         volatile uint32_t timer_read = 0;
         uint32_t last_timer_max = TIM1_SECOND;
+        #ifdef DEBUG_FINE
         volatile bool sec_pending = false;
+        #endif
 
         int next_second = -1;
         int clock_seconds = -1;
@@ -71,11 +73,13 @@ class Sync {
 
         std::optional<std::pair<uint32_t, uint32_t>> signal_pending();
 
+        #ifdef DEBUG_FINE
         bool is_second_pending() {
             bool result = sec_pending;
             sec_pending = false;
             return result;
         }
+        #endif
 };
 
 #endif //SYNC_H_
