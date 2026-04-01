@@ -6528,7 +6528,7 @@
 		(fields_autoplaced yes)
 		(uuid "a899ecde-0261-4e0b-ad83-0ccdf829699a")
 		(property "Reference" "F1"
-			(at 246.38 54.7835 90)
+			(at 246.38 53.34 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6537,8 +6537,8 @@
 				)
 			)
 		)
-		(property "Value" "Fuse"
-			(at 246.38 57.2078 90)
+		(property "Value" "200mA T"
+			(at 246.38 55.88 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
