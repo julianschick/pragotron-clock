@@ -72,14 +72,6 @@
       "diff_pair_dimensions": [],
       "drc_exclusions": [
         [
-          "copper_edge_clearance|120749584|102010400|acd3e171-b58a-4e82-b6de-bae5eb756cd5|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563",
-          ""
-        ],
-        [
-          "copper_edge_clearance|79510400|104750411|acd3e171-b58a-4e82-b6de-bae5eb756cd5|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563",
-          ""
-        ],
-        [
           "courtyards_overlap|119307500|162783803|14203e7f-6c46-41cc-99b2-f19ed87d7018|a5576188-6a90-4a51-85d0-23c9c0a174e1",
           ""
         ],
@@ -88,7 +80,7 @@
           ""
         ],
         [
-          "courtyards_overlap|84354500|114679000|5ce9491f-50c5-4dcb-98d7-e33d75742e46|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
+          "courtyards_overlap|83055000|152325000|36d38467-9130-4c18-a296-65bc7e2795ea|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
           ""
         ],
         [
@@ -105,10 +97,6 @@
         ],
         [
           "courtyards_overlap|94887000|116453000|0677bf6d-5806-48ec-ac9e-33d51090a35f|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
-          ""
-        ],
-        [
-          "courtyards_overlap|99855000|120525000|36d38467-9130-4c18-a296-65bc7e2795ea|fee04c1d-dd7c-4820-b01e-081ba6fd2276",
           ""
         ],
         [
@@ -156,6 +144,10 @@
           ""
         ],
         [
+          "silk_edge_clearance|80365490|162134511|acd3e171-b58a-4e82-b6de-bae5eb756cd5|567d7472-af25-49be-a342-9a6f6a23f6f7",
+          ""
+        ],
+        [
           "silk_edge_clearance|87842000|163000000|acd3e171-b58a-4e82-b6de-bae5eb756cd5|073ecac9-29c0-482c-96de-0699a830bc9f",
           ""
         ],
@@ -164,7 +156,15 @@
           ""
         ],
         [
-          "starved_thermal|80330125|122762125|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563|b115b055-1bc0-4b97-b34c-5be4f4d57ae8|F.Cu",
+          "starved_thermal|80330125|143082125|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563|abac9c4c-c1db-4306-92ee-248f8ce1f7dc|F.Cu",
+          ""
+        ],
+        [
+          "starved_thermal|80330125|153242125|47e1b2b2-61b1-41a5-a7e8-c80a26ecf563|f20ec5c7-2097-4c7c-ae1d-6adfb09a2658|B.Cu",
+          ""
+        ],
+        [
+          "track_not_centered_on_via|94144314|116840000|18120735-793b-4413-8909-a77170ff6cb0|7a99fee5-e81b-4d1d-b153-fde575190b68",
           ""
         ]
       ],
