@@ -2,6 +2,7 @@
 #define COIL_H_
 
 #include <Arduino.h>
+#include "led.h"
 
 #define COIL_POSITIVE D2
 #define COIL_NEGATIVE D3
@@ -23,6 +24,10 @@ class Coil {
             polarity = 1;
 
             last_advance = millis();
+        }
+
+        inline uint32_t millis_since_last_advance() {
+            return millis() - last_advance;
         }
 
         inline void advance() {
@@ -87,11 +92,14 @@ class Coil {
                 }
             #endif
 
+            Led::coil_active = true;
             if (polarity > 0) {
                 positive_pulse();
             } else if (polarity < 0) {
                 negative_pulse();
             }
+            Led::coil_active = false;
+            
             polarity = polarity * (-1);
             last_advance = now == NULL ? millis() : *now;
 

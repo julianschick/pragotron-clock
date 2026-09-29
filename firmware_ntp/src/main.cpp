@@ -13,6 +13,8 @@ time_t last_second = 0;
 
 void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+
     Serial.begin(115200);
     
     wm.setConfigPortalBlocking(false);
