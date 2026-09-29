@@ -158,7 +158,7 @@ private:
         localtime_r(&epoch, &localTime);
 
         if (epoch > 31536000) {
-            int new_minutes = (localTime.tm_hour * 60 + localTime.tm_min) % 720 - 55;
+            int new_minutes = (localTime.tm_hour * 60 + localTime.tm_min) % 720;
             if (new_minutes != minutes) {
                 minutes = new_minutes;
                 Serial.printf("%02d:%02d\n", localTime.tm_hour, localTime.tm_min);
