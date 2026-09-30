@@ -110,9 +110,14 @@ public:
         
         } else if (coil.get_display_minutes() != -1 && minutes != -1) {
             // pointer position and time is known
-            Led::clock_sprinting = false;
-
+            
             int diff = modulo(minutes - coil.get_display_minutes(), 720);
+
+            if (diff == 1 || diff == 0) {
+                Led::clock_sprinting = false;
+            } else {
+                Led::clock_sprinting = true;
+            }
 
             if (diff < 710 && diff > 0) {
                 #ifdef DEBUG
@@ -127,7 +132,7 @@ public:
                 // just wait for 10 minutes
             }   
         } else {
-            // pointer position known but time not known
+            // time not known
             Led::clock_sprinting = false;
         }
 
@@ -161,7 +166,7 @@ private:
             int new_minutes = (localTime.tm_hour * 60 + localTime.tm_min) % 720;
             if (new_minutes != minutes) {
                 minutes = new_minutes;
-                Serial.printf("%02d:%02d\n", localTime.tm_hour, localTime.tm_min);
+                Serial.printf("[[ %02d:%02d ]]\n", localTime.tm_hour, localTime.tm_min);
 
                 #ifdef DEBUG
                 Serial.printf("m = %d\n", minutes);

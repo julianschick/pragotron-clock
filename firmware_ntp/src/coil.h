@@ -49,9 +49,11 @@ class Coil {
         }
 
         inline void home() {
+            #ifdef DEBUG
             if (display_minutes != HOME_MINUTES) {
                 Serial.println("Homed");
             }
+            #endif
             display_minutes = HOME_MINUTES;
         }
 
