@@ -42,10 +42,10 @@ void setup() {
 
     WiFi.onEvent(&wifi_event_received);
     
-    wm.setConnectTimeout(15);
-    wm.setConnectRetries(1);
+    wm.setConnectTimeout(20);
+    wm.setConnectRetries(10);
     wm.setConfigPortalBlocking(false);
-    wm.setConfigPortalTimeout(120);
+    wm.setConfigPortalTimeout(300);
     wm.setConfigPortalTimeoutCallback(&captivePortalTimedOut);
     wm.setSaveParamsCallback(&paramsStored);
 
